@@ -11,10 +11,6 @@ java {
   toolchain { languageVersion = JavaLanguageVersion.of(21) }
 }
 
-/**
- * Resolve dependencies THROUGH Artifactory (virtual repo).
- * (Use Basic-auth style with access token: username 'token', password = token)
- */
 repositories {
   maven {
     url = uri('https://tompazus.jfrog.io/artifactory/mvn-virtual')
@@ -23,8 +19,6 @@ repositories {
       password = System.getenv('JF_PASSWORD')
     }
   }
-  // Optional fallback during testing:
-  // mavenCentral()
 }
 
 dependencies {
@@ -53,20 +47,8 @@ artifactory {
       // Option 1: single repo key
       repoKey = 'mvn-local'
 
-      // Option 2: split release/snapshot (uncomment if you prefer)
-      // releaseRepoKey = 'mvn-local'
-      // snapshotRepoKey = 'mvn-snapshot-local'
-
-      // If you must use user/pass instead:
       username = System.getenv('JF_USER')
       password = System.getenv('JF_PASSWORD')
-
-      // (Optional Ivy configuration shown in docs — not needed for Maven)
-      // ivy {
-      //   ivyLayout = '[organization]/[module]/ivy-[revision].xml'
-      //   artifactLayout = '[organization]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]'
-      //   mavenCompatible = true
-      // }
     }
 
     // Global defaults for artifactoryPublish
@@ -74,11 +56,7 @@ artifactory {
       publications('mavenJava')  // or 'ALL_PUBLICATIONS'
     }
 
-    // Ensure build-info is uploaded (docs example shows false; we want true)
     publishBuildInfo = true
-
-    // Optional: parallel deploy threads (docs: default 3)
-    // forkCount = 5
   }
 
   // Build-info metadata (docs-style)
@@ -92,18 +70,7 @@ artifactory {
       (System.getenv('GITHUB_REPOSITORY') ?: '') + '/actions/runs/' +
       (System.getenv('GITHUB_RUN_ID') ?: '')
     )
-    // Optionally write local copies (as in docs)
-    // setGeneratedBuildInfoFilePath("$buildDir/myBuildInfoCopy.json")
-    // setDeployableArtifactsFilePath("$buildDir/myArtifactsInBuild.json")
   }
-
-  // Optional proxy block (docs-style). Leave commented unless you need it.
-  // proxy {
-  //   host = "ProxyHost"
-  //   port = 8080
-  //   username = "ProxyUserName"
-  //   password = "ProxyPassword"
-  // }
 
   // Client config knobs (docs-style)
   clientConfig.timeout = 600
