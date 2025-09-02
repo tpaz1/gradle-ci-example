@@ -42,4 +42,5 @@ jobs:
           JF_USER: ${{ steps.jfrog-setup.outputs.oidc-user }}
           JF_PASSWORD: ${{ steps.jfrog-setup.outputs.oidc-token }}
         run: |
-          ./gradlew clean build artifactoryPublish --info --stacktrace
+          ./gradlew artifactoryPublish
+          # ./gradlew clean build artifactoryPublish --info --stacktrace
