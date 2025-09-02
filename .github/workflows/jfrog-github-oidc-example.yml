@@ -1,10 +1,21 @@
+name: Gradle Build & Publish
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0     # needed if your script reads tags/branch
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -18,11 +29,11 @@ jobs:
           JF_URL: ${{ vars.JF_URL }}
         with:
           oidc-provider-name: tpaz1/gradle-ci-example@github
-          # oidc-audience: jfrog-github   # only if you configured it
+          # oidc-audience: jfrog-github   # only if configured in JFrog
 
-      - name: Build & Publish
+      - name: Build & Publish to Artifactory
         env:
           JF_ACCESS_TOKEN: ${{ steps.jfrog-setup.outputs.oidc-token }}
         run: |
           chmod +x ./gradlew
-          ./gradlew clean build artifactoryPublish --info
+          ./gradlew clean build artifactoryPublish --info --stacktrace
