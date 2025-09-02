@@ -1,25 +1,28 @@
-name: "Setup JFrog CLI OIDC Example"
-on: push
-
-permissions:
-  # This is required for requesting the OIDC token
-  id-token: write
-  # This is required for actions/checkout
-  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup JFrog CLI
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # needed if your script reads tags/branch
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup JFrog CLI (OIDC)
+        id: jfrog-setup
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ vars.JF_URL }}
         with:
           oidc-provider-name: tpaz1/gradle-ci-example@github
+          # oidc-audience: jfrog-github   # only if you configured it
 
-      - name: Run JFrog CLI
+      - name: Build & Publish
+        env:
+          JF_ACCESS_TOKEN: ${{ steps.jfrog-setup.outputs.oidc-token }}
         run: |
-          # Ping the server
-          jf rt ping
+          chmod +x ./gradlew
+          ./gradlew clean build artifactoryPublish --info

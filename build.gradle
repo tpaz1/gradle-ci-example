@@ -1,0 +1,76 @@
+plugins {
+  id 'java-library'
+  id 'maven-publish'
+  id "com.jfrog.artifactory" version "5.+"
+}
+
+group = 'testing'
+version = '1.0.0-SNAPSHOT' // or your logic; SNAPSHOTs still fine
+
+java {
+  toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+repositories {
+  // Resolve THROUGH JFrog (virtual repo)
+  maven {
+    url = uri('https://tompazus.jfrog.io/artifactory/mvn-virtual')
+    credentials {
+      // When using an access token with tools that expect Basic auth:
+      username = 'token'
+      password = System.getenv('JF_ACCESS_TOKEN')
+    }
+  }
+  // Optional: keep mavenCentral() as fallback while testing
+  // mavenCentral()
+}
+
+dependencies {
+  // If you use a version catalog (libs.*) keep it.
+  // Otherwise, add a known dep to prove resolution works, e.g.:
+  testImplementation 'junit:junit:4.13.2'
+  implementation 'com.google.guava:guava:33.2.1-jre'
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+      // (Optional) explicitly set coords if needed:
+      // groupId = 'testing'
+      // artifactId = 'demo-lib'
+      // version = version
+    }
+  }
+}
+
+artifactory {
+  contextUrl = 'https://tompazus.jfrog.io/artifactory' // top-level, required
+
+  // Resolution via Artifactory (equivalent to repositories{} block; either is fine)
+  resolve {
+    repository {
+      repoKey = 'mvn-virtual'
+      accessToken = System.getenv('JF_ACCESS_TOKEN')
+    }
+  }
+
+  // Publishing target: your local repo
+  publish {
+    repository {
+      repoKey = 'mvn-local'
+      accessToken = System.getenv('JF_ACCESS_TOKEN')
+      // (do NOT set username/password when using accessToken)
+    }
+    defaults {
+      publications('mavenJava')   // or 'ALL_PUBLICATIONS'
+      publishBuildInfo = true     // ensure build-info is uploaded
+    }
+  }
+
+  buildInfo {
+    // Make the build easy to find in the UI
+    setBuildName(System.getenv('GITHUB_WORKFLOW') ?: rootProject.name)
+    setBuildNumber(System.getenv('GITHUB_RUN_NUMBER') ?: System.currentTimeMillis().toString())
+  }
+}
