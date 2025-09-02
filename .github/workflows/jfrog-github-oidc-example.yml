@@ -39,7 +39,7 @@ jobs:
 
       - name: Build & Publish to Artifactory
         env:
-          # Pass the short-lived OIDC token to Gradle (used as Basic auth password with username 'token')
-          JF_ACCESS_TOKEN: ${{ steps.jfrog-setup.outputs.oidc-token }}
+          JF_USER: ${{ steps.jfrog-setup.outputs.oidc-user }}
+          JF_PASSWORD: ${{ steps.jfrog-setup.outputs.oidc-token }}
         run: |
           ./gradlew clean build artifactoryPublish --info --stacktrace
