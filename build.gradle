@@ -5,29 +5,29 @@ plugins {
 }
 
 group = 'testing'
-version = '1.0.0-SNAPSHOT' // or your logic; SNAPSHOTs still fine
+version = '1.0.0-SNAPSHOT'
 
 java {
   toolchain { languageVersion = JavaLanguageVersion.of(21) }
 }
 
+/**
+ * Resolve dependencies THROUGH Artifactory (virtual repo).
+ * (Use Basic-auth style with access token: username 'token', password = token)
+ */
 repositories {
-  // Resolve THROUGH JFrog (virtual repo)
   maven {
     url = uri('https://tompazus.jfrog.io/artifactory/mvn-virtual')
     credentials {
-      // When using an access token with tools that expect Basic auth:
-      username = 'token'
-      password = System.getenv('JF_ACCESS_TOKEN')
+      username = System.getenv('JF_USER')
+      password = System.getenv('JF_PASSWORD')
     }
   }
-  // Optional: keep mavenCentral() as fallback while testing
+  // Optional fallback during testing:
   // mavenCentral()
 }
 
 dependencies {
-  // If you use a version catalog (libs.*) keep it.
-  // Otherwise, add a known dep to prove resolution works, e.g.:
   testImplementation 'junit:junit:4.13.2'
   implementation 'com.google.guava:guava:33.2.1-jre'
 }
@@ -36,7 +36,6 @@ publishing {
   publications {
     mavenJava(MavenPublication) {
       from components.java
-      // (Optional) explicitly set coords if needed:
       // groupId = 'testing'
       // artifactId = 'demo-lib'
       // version = version
@@ -45,32 +44,72 @@ publishing {
 }
 
 artifactory {
-  contextUrl = 'https://tompazus.jfrog.io/artifactory' // top-level, required
-
-  // Resolution via Artifactory (equivalent to repositories{} block; either is fine)
-  resolve {
-    repository {
-      repoKey = 'mvn-virtual'
-      accessToken = System.getenv('JF_ACCESS_TOKEN')
-    }
-  }
-
-  // Publishing target: your local repo
   publish {
+    // ==== docs-style placement of contextUrl ====
+    contextUrl = 'https://tompazus.jfrog.io/artifactory'
+
+    // Target repository to DEPLOY artifacts
     repository {
+      // Option 1: single repo key
       repoKey = 'mvn-local'
-      accessToken = System.getenv('JF_ACCESS_TOKEN')
-      // (do NOT set username/password when using accessToken)
+
+      // Option 2: split release/snapshot (uncomment if you prefer)
+      // releaseRepoKey = 'mvn-local'
+      // snapshotRepoKey = 'mvn-snapshot-local'
+
+      // If you must use user/pass instead:
+      username = System.getenv('JF_USER')
+      password = System.getenv('JF_PASSWORD')
+
+      // (Optional Ivy configuration shown in docs — not needed for Maven)
+      // ivy {
+      //   ivyLayout = '[organization]/[module]/ivy-[revision].xml'
+      //   artifactLayout = '[organization]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]'
+      //   mavenCompatible = true
+      // }
     }
+
+    // Global defaults for artifactoryPublish
     defaults {
-      publications('mavenJava')   // or 'ALL_PUBLICATIONS'
-      publishBuildInfo = true     // ensure build-info is uploaded
+      publications('mavenJava')  // or 'ALL_PUBLICATIONS'
     }
+
+    // Ensure build-info is uploaded (docs example shows false; we want true)
+    publishBuildInfo = true
+
+    // Optional: parallel deploy threads (docs: default 3)
+    // forkCount = 5
   }
 
+  // Build-info metadata (docs-style)
   buildInfo {
-    // Make the build easy to find in the UI
     setBuildName(System.getenv('GITHUB_WORKFLOW') ?: rootProject.name)
     setBuildNumber(System.getenv('GITHUB_RUN_NUMBER') ?: System.currentTimeMillis().toString())
+    // setProject('project-key') // optionally tag under a Projects key
+    addEnvironmentProperty('github.repository', System.getenv('GITHUB_REPOSITORY'))
+    addEnvironmentProperty('github.run_url',
+      (System.getenv('GITHUB_SERVER_URL') ?: '') + '/' +
+      (System.getenv('GITHUB_REPOSITORY') ?: '') + '/actions/runs/' +
+      (System.getenv('GITHUB_RUN_ID') ?: '')
+    )
+    // Optionally write local copies (as in docs)
+    // setGeneratedBuildInfoFilePath("$buildDir/myBuildInfoCopy.json")
+    // setDeployableArtifactsFilePath("$buildDir/myArtifactsInBuild.json")
   }
+
+  // Optional proxy block (docs-style). Leave commented unless you need it.
+  // proxy {
+  //   host = "ProxyHost"
+  //   port = 8080
+  //   username = "ProxyUserName"
+  //   password = "ProxyPassword"
+  // }
+
+  // Client config knobs (docs-style)
+  clientConfig.timeout = 600
+  clientConfig.setConnectionRetries(4)
+  clientConfig.setInsecureTls(false)
+  clientConfig.setIncludeEnvVars(true)
+  clientConfig.setEnvVarsExcludePatterns('*password*,*secret*')
+  clientConfig.setEnvVarsIncludePatterns('*not-secret*')
 }

@@ -22,6 +22,12 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # Generate the Gradle wrapper (8.8) so we can use ./gradlew in this run
+      - name: Generate Gradle wrapper (8.8)
+        run: |
+          gradle wrapper --gradle-version 8.8
+          chmod +x ./gradlew
+
       - name: Setup JFrog CLI (OIDC)
         id: jfrog-setup
         uses: jfrog/setup-jfrog-cli@v4
@@ -33,7 +39,7 @@ jobs:
 
       - name: Build & Publish to Artifactory
         env:
+          # Pass the short-lived OIDC token to Gradle (used as Basic auth password with username 'token')
           JF_ACCESS_TOKEN: ${{ steps.jfrog-setup.outputs.oidc-token }}
         run: |
-          chmod +x ./gradlew
           ./gradlew clean build artifactoryPublish --info --stacktrace
